@@ -69,12 +69,18 @@ function PunkAveFileUploader(options)
     url: uploadUrl,
     dropZone: $el.find('[data-dropzone="1"]'),
     done: function (e, data) {
+
+      var oFilesTable = $('table.drawFilesDataTable').dataTable();
+      oFilesTable.fnDestroy();
+
       if (data)
       {
         _.each(data.result, function(item) {
           appendEditableImage(item);
         });
       }
+
+      drawFilesDataTable($('table.drawFilesDataTable'));
     },
     start: function (e) {
       $el.find('[data-spinner="1"]').show();
@@ -96,22 +102,28 @@ function PunkAveFileUploader(options)
       self.errorCallback(info);
       return;
     }
-    var li = $(fileTemplate(info));
-    li.find('[data-action="delete"]').click(function(event) {
+    var item = $(fileTemplate(info));
+    item.find('[data-action="delete"]').click(function(event) {
+      //console.log($(this));
+      var oFilesTable = $('table.drawFilesDataTable').dataTable();
+      oFilesTable.fnDestroy();
+
       var file = $(this).closest('[data-name]');
       var name = file.attr('data-name');
+      //console.log('file is: '+file+', name is: '+name+'');
       $.ajax({
         type: 'delete',
         url: setQueryParameter(uploadUrl, 'file', name),
         success: function() {
           file.remove();
+          drawFilesDataTable($('table.drawFilesDataTable'));
         },
         dataType: 'json'
       });
       return false;
     });
 
-    thumbnails.append(li);
+    thumbnails.append(item);
   }
 
   function setQueryParameter(url, param, paramVal)
