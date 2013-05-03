@@ -105,22 +105,43 @@ function PunkAveFileUploader(options)
     var item = $(fileTemplate(info));
     item.find('[data-action="delete"]').click(function(event) {
       //console.log($(this));
-      var oFilesTable = $('table.drawFilesDataTable').dataTable();
-      oFilesTable.fnDestroy();
-
-      var file = $(this).closest('[data-name]');
+      var link = $(this);
+      var file = link.closest('[data-name]');
       var name = file.attr('data-name');
-      //console.log('file is: '+file+', name is: '+name+'');
-      $.ajax({
-        type: 'delete',
-        url: setQueryParameter(uploadUrl, 'file', name),
-        success: function() {
-          file.remove();
-          drawFilesDataTable($('table.drawFilesDataTable'));
-        },
-        dataType: 'json'
-      });
-      return false;
+      //dialogConfirm("Delete File", "Are you sure you want to delete this file?");
+      if ( $('body').find('div#dialog-confirm').length != 0) {
+      $('#dialog-confirm').html('');
+      $('#dialog-confirm').attr('title', 'Delete File');
+      $('#dialog-confirm').html('<p>Are you sure you want to delete this file?<br/><strong>'+name+'</strong></p>');
+      } else {
+        $('body').append('<div id="dialog-confirm" title="Delete File"><p>Are you sure you want to delete this file?<br/><strong>'+name+'</strong></p></div>');
+      }
+      $( "#dialog-confirm" ).dialog({
+            resizable: false,
+            width: 300,
+            modal: true,
+            buttons: {
+                "Delete": function() {
+                    $( this ).dialog( "close" );
+                    var oFilesTable = $('table.drawFilesDataTable').dataTable();
+                    oFilesTable.fnDestroy();
+
+                    $.ajax({
+                      type: 'delete',
+                      url: setQueryParameter(uploadUrl, 'file', name),
+                      success: function() {
+                        file.remove();
+                        drawFilesDataTable($('table.drawFilesDataTable'));
+                      },
+                      dataType: 'json'
+                    });
+                    //return false;
+                },
+                Cancel: function() {
+                    $( this ).dialog( "close" );
+                }
+            }
+        });
     });
 
     thumbnails.append(item);
