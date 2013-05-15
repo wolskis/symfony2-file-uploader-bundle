@@ -68,6 +68,9 @@ function PunkAveFileUploader(options)
     dataType: 'json',
     url: uploadUrl,
     dropZone: $el.find('[data-dropzone="1"]'),
+    progressInterval: 100, 
+    maxChunkSize: 1024000,
+    //sequentialUploads: 1,
     done: function (e, data) {
 
       var oFilesTable = $('table.drawFilesDataTable').dataTable();
@@ -79,16 +82,73 @@ function PunkAveFileUploader(options)
           appendEditableImage(item);
         });
       }
-
+      //$('#progress-box').hide();
       drawFilesDataTable($('table.drawFilesDataTable'));
     },
+    fail: function (e, data) {
+      alert('There was an error uploading '+data.files[0].name+'.  Please try again later or contact support.')
+    },
     start: function (e) {
-      $el.find('[data-spinner="1"]').show();
+      //$el.find('[data-spinner="1"]').show();
+      $('#progress-box').slideDown(100);
       self.uploading = true;
     },
     stop: function (e) {
-      $el.find('[data-spinner="1"]').hide();
+      //$el.find('[data-spinner="1"]').hide();
+      $('#progress-box').slideUp(100);
+      $('ul.upload-items').html('');
       self.uploading = false;
+    },
+    send: function(e, data){
+      //console.log(data);
+      var queueNumber;
+      $.each(data.originalFiles, function(index, item){
+        if( item.name === data.files[0].name ){
+          queueNumber = index;
+        }
+      });
+      $.each(data.files, function(index, file) {
+        console.log('File send: '+file.name+', '+file.size+'Bytes, '+file.type+', last modified by user: '+file.lastModifiedDate);
+      });
+      //console.log('file number: '+queueNumber);
+      $('ul.upload-items').append('<li><span class="file-name">'+data.files[0].name+'</span><br/><div class="progress-bar_'+queueNumber+' progress-bar-styles"></div></li>');
+      $('div.progress-bar_'+queueNumber+'').progressbar({
+            value: 0
+      });
+    },
+    paste: function(e, data) {
+      //console.log('this is a paste event for drag and drop.');
+      //console.log(data);
+    },
+    drop: function(e, data) {
+      /*$.each(data.files, function(key, value) {
+        console.log(key+ ': '+value.name);
+      });*/
+      //console.log('DROP EVENT: File name: '+data.files[0].name+'');
+      //console.log(data);
+    },
+    dragover: function(e, data) {
+      //console.log('this is a dragover event for drag and drop.');
+      //console.log(data);
+    },
+    progress: function(e, data) {
+      //console.log('Progress event for single file');
+      //console.log(data);
+      var queueNumber;
+      $.each(data.originalFiles, function(index, item){
+        if( item.name === data.files[0].name ){
+          queueNumber = index;
+        }
+      });
+      var progressValue = (data.loaded / data.files[0].size)*100;
+      //console.log(progressValue);
+      $('div.progress-bar_'+queueNumber+'').progressbar('value',progressValue);
+      
+    },
+    progressall: function(e, data) {
+      //console.log('Progress event for all files');
+      //console.log(data);
+      //$('#progress-box').show();
     }
   });
 
