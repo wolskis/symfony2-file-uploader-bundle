@@ -71,6 +71,29 @@ function PunkAveFileUploader(options)
     progressInterval: 100, 
     maxChunkSize: 1024000,
     //sequentialUploads: 1,
+    add: function (e, data) {
+        //jqXHR = data.submit();
+        var xhr = data.submit();
+        var queueNumber;
+        $.each(data.originalFiles, function(index, item){
+          if( item.name === data.files[0].name ){
+            queueNumber = index;
+          }
+        });
+        $.each(data.files, function(index, file) {
+          console.log('File send: '+file.name+', '+file.size+'Bytes, '+file.type+', last modified by user: '+file.lastModifiedDate);
+        });
+        $('ul.upload-items').append('<li><span class="file-name">'+data.files[0].name+'</span><br/><div class="progress-bar_'+queueNumber+' progress-bar-styles"></div><a href="javascript:void(0);" class="ui-icon ui-icon-closethick cancel-upload"></a></li>');
+        $('ul.upload-items li:last').data('data',{jqXHR: xhr});
+        $('a.cancel-upload').click(function(){
+            $(this).parent('li').data('data').jqXHR.abort();
+            //xhr.abort();
+            $(this).parent('li').css('opacity','0.3');
+        });
+        $('div.progress-bar_'+queueNumber+'').progressbar({
+              value: 0
+        });
+    }, 
     done: function (e, data) {
 
       var oFilesTable = $('table.drawFilesDataTable').dataTable();
@@ -86,50 +109,36 @@ function PunkAveFileUploader(options)
       drawFilesDataTable($('table.drawFilesDataTable'));
     },
     fail: function (e, data) {
-      alert('There was an error uploading '+data.files[0].name+'.  Please try again later or contact support.')
+      //console.log(data);
+      if ( data.textStatus == 'abort'){
+        alert('Upload of '+data.files[0].name+' cancelled by user.');
+      } else {
+        alert('There was an error uploading '+data.files[0].name+'.  Please try again later or contact support.');
+      }
     },
     start: function (e) {
       //$el.find('[data-spinner="1"]').show();
       $('#progress-box').slideDown(100);
-      self.uploading = true;
+      //self.uploading = true;
     },
     stop: function (e) {
       //$el.find('[data-spinner="1"]').hide();
       $('#progress-box').slideUp(100);
       $('ul.upload-items').html('');
-      self.uploading = false;
+      //self.uploading = false;
     },
     send: function(e, data){
-      //console.log(data);
-      var queueNumber;
-      $.each(data.originalFiles, function(index, item){
-        if( item.name === data.files[0].name ){
-          queueNumber = index;
-        }
-      });
-      $.each(data.files, function(index, file) {
-        console.log('File send: '+file.name+', '+file.size+'Bytes, '+file.type+', last modified by user: '+file.lastModifiedDate);
-      });
-      //console.log('file number: '+queueNumber);
-      $('ul.upload-items').append('<li><span class="file-name">'+data.files[0].name+'</span><br/><div class="progress-bar_'+queueNumber+' progress-bar-styles"></div></li>');
-      $('div.progress-bar_'+queueNumber+'').progressbar({
-            value: 0
-      });
+
+      
     },
-    paste: function(e, data) {
-      //console.log('this is a paste event for drag and drop.');
-      //console.log(data);
+    chunksend: function(e, data) {
+      console.log(data);
     },
-    drop: function(e, data) {
-      /*$.each(data.files, function(key, value) {
-        console.log(key+ ': '+value.name);
-      });*/
-      //console.log('DROP EVENT: File name: '+data.files[0].name+'');
-      //console.log(data);
+    chunkdone: function(e, data) {
+      console.log(data);
     },
-    dragover: function(e, data) {
-      //console.log('this is a dragover event for drag and drop.');
-      //console.log(data);
+    chunkfail: function(e, data) {
+      console.log(data);
     },
     progress: function(e, data) {
       //console.log('Progress event for single file');
