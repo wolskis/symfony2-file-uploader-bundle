@@ -15,14 +15,21 @@ function PunkAveFileUploader(options)
   
   self.errorCallback = 'errorCallback' in options ? options.errorCallback : function( info ) { if (window.console && console.log) { console.log(info) } },
 
-  self.addExistingFiles = function(files)
+  self.addExistingFiles = function(files, sizes, modified, accessed, created)
   {
-    _.each(files, function(file) {
+    /*console.log(files);
+    console.log(sizes);
+    console.log(modified);
+    console.log(accessed);
+    console.log(created);*/
+    _.each(files, function(file, index) {
       appendEditableImage({
         // cmsMediaUrl is a global variable set by the underscoreTemplates partial of MediaItems.html.twig
-        'thumbnail_url': viewUrl + '/thumbnails/' + file,
-        'url': viewUrl + '/originals/' + file,
-        'name': file
+        'thumbnail_url': viewUrl + '/thumbnails/' + files[index],
+        'url': viewUrl + '/originals/' + files[index],
+        'name': files[index],
+        'size': sizes[index],
+        'lastModified': modified[index]
         });
     });
   };
@@ -61,7 +68,8 @@ function PunkAveFileUploader(options)
 
   if (options.existingFiles)
   {
-    self.addExistingFiles(options.existingFiles);
+    //console.log(options);
+    self.addExistingFiles(options.existingFiles, options.existingFileSizes, options.existingFileMTimes, options.existingFileATimes, options.existingFileCTimes);
   }
 
   editor.fileupload({
@@ -70,19 +78,42 @@ function PunkAveFileUploader(options)
     dropZone: $el.find('[data-dropzone="1"]'),
     progressInterval: 100, 
     maxChunkSize: 1024000,
-    //sequentialUploads: 1,
+    // can use the following line to append extra form data in an array or object
+    //formData: {example: 'test'},
     add: function (e, data) {
-        //jqXHR = data.submit();
-        var xhr = data.submit();
+        
+        var fileName = data.files[0].name;
+        var xhr = data.submit()
+            .success(function (result, textStatus, jqXHR) { 
+              //console.log(jqXHR);
+            })
+            .error(function (jqXHR, textStatus, errorThrown) {
+              //console.log(errorThrown);
+            })
+            .complete(function (result, textStatus, jqXHR) {
+              //console.log(result);
+              //console.log(textStatus);
+              //console.log(jqXHR);
+              if (jqXHR === 'abort'){
+                $.ajax({
+                  type: 'delete',
+                  url: setQueryParameter(uploadUrl, 'file', fileName),
+                  success: function() {
+                    console.log('file deleted');
+                  },
+                  dataType: 'json'
+                });
+              }
+            });
         var queueNumber;
         $.each(data.originalFiles, function(index, item){
           if( item.name === data.files[0].name ){
             queueNumber = index;
           }
         });
-        $.each(data.files, function(index, file) {
+        /*$.each(data.files, function(index, file) {
           console.log('File send: '+file.name+', '+file.size+'Bytes, '+file.type+', last modified by user: '+file.lastModifiedDate);
-        });
+        });*/
         $('ul.upload-items').append('<li><span class="file-name">'+data.files[0].name+'</span><br/><div class="progress-bar_'+queueNumber+' progress-bar-styles"></div><a href="javascript:void(0);" class="ui-icon ui-icon-closethick cancel-upload"></a></li>');
         $('ul.upload-items li:last').data('data',{jqXHR: xhr});
         $('a.cancel-upload').click(function(){
@@ -95,13 +126,32 @@ function PunkAveFileUploader(options)
         });
     }, 
     done: function (e, data) {
-
+      //console.log(data);
       var oFilesTable = $('table.drawFilesDataTable').dataTable();
       oFilesTable.fnDestroy();
-
+      //console.log(data);
       if (data)
       {
-        _.each(data.result, function(item) {
+        _.each(data.result, function(item, index) {
+          //console.log(index);
+          var size = data.files[index].size;
+            if ((data.files[index].size/1024) < 1000 ) {
+                size = (Math.floor(data.files[0].size/1024))+' KB';
+            } else if ((data.files[index].size/1024/1024) < 1000 ) {
+                size = (Math.floor(data.files[0].size/1024/1024))+' MB';
+            } else if ((data.files[index].size/1024/1024) >= 1000 ) {
+                size = (Math.floor(data.files[0].size/1024/1024))+' GB';
+            } else {
+                size = data.files[index].size+' B';
+            }
+          console.log(window.serverTime);
+          // This is the user's last modified time
+          //var lastModified = data.files[0].lastModifiedDate;
+          console.log(item);
+          var lastModified = window.serverTime;
+          item.size = size;
+          item.lastModified = lastModified;
+          console.log(item);
           appendEditableImage(item);
         });
       }
@@ -171,7 +221,9 @@ function PunkAveFileUploader(options)
       self.errorCallback(info);
       return;
     }
+    //console.log(info);
     var item = $(fileTemplate(info));
+    //console.log(info);
     item.find('[data-action="delete"]').click(function(event) {
       //console.log($(this));
       var link = $(this);

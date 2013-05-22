@@ -29,7 +29,7 @@ class FileManager
             {
                 return $dirs;
             }
-            $result = array_map(function($s) { return basename($s); }, $dirs);
+            $result = array_map(function($s) { return array( basename($s),filesize($s), date("d/m/y g:iA", filemtime($s)),date("d/m/y g:iA", fileatime($s)),date("d/m/y g:iA", filectime($s)) ); }, $dirs);
             return $result;
         }
         else
