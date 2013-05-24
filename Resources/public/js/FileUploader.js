@@ -167,21 +167,25 @@ function PunkAveFileUploader(options)
     },
     start: function (e) {
       //$el.find('[data-spinner="1"]').show();
+      $('body').prepend('<div id="progress-box" style="display:none;top:'+($(window).height()/2)+'"><p>Uploading ... <span id="progress-count"><span></p><ul class="upload-items"></ul></div>');
       $('#progress-box').slideDown(100);
+      $('body').prepend('<div id="disable-overlay"></div>');
+      //$('body').css('-webkit-filter', 'blur(2px)');
+      $('#disable-overlay').fadeIn(200);
       //self.uploading = true;
 
     },
     stop: function (e) {
       //$el.find('[data-spinner="1"]').hide();
       $('#progress-box').slideUp(100);
+      $('#progress-box').remove();
       $('ul.upload-items').html('');
       $('#disable-overlay').fadeOut(200);
+      $('#disable-overlay').remove();
       //self.uploading = false;
     },
     send: function(e, data){
-      $('body').prepend('<div id="disable-overlay"></div>');
-      //$('body').css('-webkit-filter', 'blur(2px)');
-      $('#disable-overlay').fadeIn(200);
+
 
       /*$(document).find('a, ["onclick"]').click(function(){
         e.preventDefault();
