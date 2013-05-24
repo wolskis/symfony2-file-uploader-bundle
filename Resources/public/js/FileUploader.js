@@ -81,7 +81,6 @@ function PunkAveFileUploader(options)
     // can use the following line to append extra form data in an array or object
     //formData: {example: 'test'},
     add: function (e, data) {
-        
         var fileName = data.files[0].name;
         var xhr = data.submit()
             .success(function (result, textStatus, jqXHR) { 
@@ -144,14 +143,14 @@ function PunkAveFileUploader(options)
             } else {
                 size = data.files[index].size+' B';
             }
-          console.log(window.serverTime);
+          //console.log(window.serverTime);
           // This is the user's last modified time
           //var lastModified = data.files[0].lastModifiedDate;
-          console.log(item);
+          //console.log(item);
           var lastModified = window.serverTime;
           item.size = size;
           item.lastModified = lastModified;
-          console.log(item);
+          //console.log(item);
           appendEditableImage(item);
         });
       }
@@ -170,16 +169,24 @@ function PunkAveFileUploader(options)
       //$el.find('[data-spinner="1"]').show();
       $('#progress-box').slideDown(100);
       //self.uploading = true;
+
     },
     stop: function (e) {
       //$el.find('[data-spinner="1"]').hide();
       $('#progress-box').slideUp(100);
       $('ul.upload-items').html('');
+      $('#disable-overlay').fadeOut(200);
       //self.uploading = false;
     },
     send: function(e, data){
+      $('body').prepend('<div id="disable-overlay"></div>');
+      //$('body').css('-webkit-filter', 'blur(2px)');
+      $('#disable-overlay').fadeIn(200);
 
-      
+      /*$(document).find('a, ["onclick"]').click(function(){
+        e.preventDefault();
+        alert('Navigating away from this page during upload will cause file and data corruption.  Please wait for all uploads to finish or cancel them before visiting any other pages.');
+      });*/
     },
     chunksend: function(e, data) {
       console.log(data);
