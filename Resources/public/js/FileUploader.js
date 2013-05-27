@@ -98,7 +98,7 @@ function PunkAveFileUploader(options)
                   type: 'delete',
                   url: setQueryParameter(uploadUrl, 'file', fileName),
                   success: function() {
-                    console.log('file deleted');
+                    //console.log('file deleted');
                   },
                   dataType: 'json'
                 });
@@ -119,6 +119,14 @@ function PunkAveFileUploader(options)
             $(this).parent('li').data('data').jqXHR.abort();
             //xhr.abort();
             $(this).parent('li').css('opacity','0.3');
+        });
+        if($('div#progress-box').find('a.close_file_upload').length == 0 ){
+          $('div#progress-box').prepend('<a class="close_file_upload" href="javascript:void(0)"></a>');
+        } 
+        $('a.close_file_upload').click(function(){
+            $('ul.upload-items').find('li').each(function(){
+              $(this).data('data').jqXHR.abort();
+            });
         });
         $('div.progress-bar_'+queueNumber+'').progressbar({
               value: 0
@@ -193,13 +201,13 @@ function PunkAveFileUploader(options)
       });*/
     },
     chunksend: function(e, data) {
-      console.log(data);
+      //console.log(data);
     },
     chunkdone: function(e, data) {
-      console.log(data);
+      //console.log(data);
     },
     chunkfail: function(e, data) {
-      console.log(data);
+      //console.log(data);
     },
     progress: function(e, data) {
       //console.log('Progress event for single file');
