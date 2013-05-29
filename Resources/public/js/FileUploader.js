@@ -13,7 +13,31 @@ function PunkAveFileUploader(options)
   
   self.uploading = false;
   
-  self.errorCallback = 'errorCallback' in options ? options.errorCallback : function( info ) { if (window.console && console.log) { console.log(info) } },
+  self.errorCallback = 'errorCallback' in options ? options.errorCallback : function( info ) { 
+    if (window.console && console.log) { 
+      console.log(info) 
+    } 
+    if (info.error = "acceptFileTypes"){
+      //alert(info.name);
+      if ( $('body').find('div#dialog-confirm').length != 0) {
+        $('#dialog-confirm').html('');
+        $('#dialog-confirm').attr('title', 'Upload Error');
+        $('#dialog-confirm').html('<p>The upload of <strong>'+info.name+'</strong> failed because <strong>'+info.type+' files</strong> cannot be uploaded to Quadrant.</p>');
+      } else {
+        $('body').append('<div id="dialog-confirm" title="Upload Error"><p>The upload of <strong>'+info.name+'</strong> failed because <strong>'+info.type+' files</strong> cannot be uploaded to Quadrant.</p></div>');
+      }
+      $( "#dialog-confirm" ).dialog({
+          resizable: false,
+          width: 300,
+          modal: true,
+          buttons: {
+            "OK": function() {
+              $( this ).dialog( "close" );
+            }
+          }
+      });
+    }
+  },
 
   self.addExistingFiles = function(files, sizes, modified, accessed, created)
   {
@@ -166,7 +190,7 @@ function PunkAveFileUploader(options)
       drawFilesDataTable($('table.drawFilesDataTable'));
     },
     fail: function (e, data) {
-      //console.log(data);
+      console.log(data);
       if ( data.textStatus == 'abort'){
         alert('Upload of '+data.files[0].name+' cancelled by user.');
       } else {
