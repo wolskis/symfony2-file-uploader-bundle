@@ -199,7 +199,7 @@ function PunkAveFileUploader(options)
     },
     start: function (e) {
       //$el.find('[data-spinner="1"]').show();
-      $('body').prepend('<div id="progress-box" style="display:none;top:'+($(window).height()/2)+'"><p>Uploading ... <span id="progress-count"><span></p><ul class="upload-items"></ul></div>');
+      $('body').prepend('<div id="progress-box" style="display:none;top:'+($(window).height()/2)+'"><p>Uploading ... <span id="progress-count"><span></p><ul class="upload-items"></ul><p>Want to keep working during file upload? <a href="/quadrant/project/view/'+window.currentProjectId+'#view_description" target="_blank">Click here to open a new tab.</a></p></div>');
       $('#progress-box').slideDown(100);
       $('body').prepend('<div id="disable-overlay"></div>');
       //$('body').css('-webkit-filter', 'blur(2px)');
