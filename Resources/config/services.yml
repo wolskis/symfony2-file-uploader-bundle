@@ -1,7 +1,7 @@
 parameters:
   file_uploader.max_number_of_files: ~
-  file_uploader.file_base_path: "%kernel.root_dir%/../web/uploads"
-  file_uploader.web_base_path: "/uploads"
+  file_uploader.file_base_path: "%kernel.root_dir%/../uploads"
+  file_uploader.web_base_path: "/quadrant/tmp"
   file_uploader.allowed_extensions:
     # Mime types are just for documentation's sake. 
     # BlueImp filters by supplied extension. No checking of the
