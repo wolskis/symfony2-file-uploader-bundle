@@ -69,19 +69,27 @@ class UploadHandler
     }
 
     protected function getFullUrl() {
-        syslog(LOG_CRIT, "getFullUrl");
 
-        return
-            (isset($_SERVER['HTTPS']) ? 'https://' : 'http://').
+        syslog(LOG_DEBUG, "getFullUrl:entry");
+
+        $retval = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://').
             (isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'].'@' : '').
             (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : ($_SERVER['SERVER_NAME'].
                 (isset($_SERVER['HTTPS']) && $_SERVER['SERVER_PORT'] === 443 ||
                 $_SERVER['SERVER_PORT'] === 80 ? '' : ':'.$_SERVER['SERVER_PORT']))).
             substr($_SERVER['SCRIPT_NAME'],0, strrpos($_SERVER['SCRIPT_NAME'], '/'));
+
+        syslog(LOG_DEBUG, "getFullUrl:returns : "+$retval);
+        syslog(LOG_DEBUG, "getFullUrl:exit");
+        return $retval;
+
     }
 
     protected function set_file_delete_url($file) {
-        syslog(LOG_CRIT, "set_file_delete_url");
+
+
+        syslog(LOG_DEBUG, "set_file_delete_url:entry file: ".json_encode($file));
+
 
         $file->delete_url = $this->options['script_url']
             .'?file='.rawurlencode($file->name);
@@ -89,10 +97,12 @@ class UploadHandler
         if ($file->delete_type !== 'DELETE') {
             $file->delete_url .= '&_method=DELETE';
         }
+        syslog(LOG_DEBUG, "set_file_delete_url:exit".json_encode($file));
     }
 
     protected function get_file_object($file_name) {
-        syslog(LOG_CRIT, "get_file_object");
+
+        syslog(LOG_DEBUG, "get_file_object:entry -".$file_name);
 
         $file_path = $this->options['upload_dir'].$file_name;
         if (is_file($file_path) && $file_name[0] !== '.') {
@@ -102,32 +112,43 @@ class UploadHandler
             $file->url = $this->options['upload_url'].rawurlencode($file->name);
             foreach($this->options['image_versions'] as $version => $options) {
                 if (is_file($options['upload_dir'].$file_name)) {
-                    $file->{$version.'_url'} = $options['upload_url']
-                        .rawurlencode($file->name);
+                    $file->{$version.'_url'} = $options['upload_url'].rawurlencode($file->name);
                 }
             }
             $this->set_file_delete_url($file);
+            syslog(LOG_DEBUG, "get_file_object:exit " . json_encode($file));
             return $file;
         }
+        syslog(LOG_DEBUG, "get_file_object:exit");
         return null;
     }
 
     protected function get_file_objects() {
-        syslog(LOG_CRIT, "get_file_objects");
-
-        return array_values(array_filter(array_map(
+        syslog(LOG_DEBUG, "get_file_objects:enter");
+        $dirs = scandir($this->options['upload_dir']);
+        if ($dirs == false) {
+            syslog(LOG_ALERT, "Can not read upload_dir configured.");
+        }
+        $retval =  array_values(array_filter(array_map(
             array($this, 'get_file_object'),
-            scandir($this->options['upload_dir'])
+            $dirs
         )));
+        syslog(LOG_DEBUG, "get_file_objects:exit returns : " + json_encode($retval));
+        return $retval;
     }
 
     protected function create_scaled_image($file_name, $options) {
-        syslog(LOG_CRIT, "create_scaled_image");
+        syslog(LOG_DEBUG, "create_scaled_image:entry ".$file_name.",".json_encode($options));
 
         $file_path = $this->options['upload_dir'].$file_name;
         $new_file_path = $options['upload_dir'].$file_name;
-        list($img_width, $img_height) = @getimagesize($file_path);
+        $image_size = @getimagesize($file_path);
+        if ($image_size == false) {
+            syslog(LOG_ALERT, "Can not @getimagesize() for file ".$file_name);
+        }
+        list($img_width, $img_height) = $image_size;
         if (!$img_width || !$img_height) {
+            syslog(LOG_WARNING, "Cannot load images with size = 0 ");
             return false;
         }
         $scale = min(
@@ -143,10 +164,16 @@ class UploadHandler
         $new_width = $img_width * $scale;
         $new_height = $img_height * $scale;
         $new_img = @imagecreatetruecolor($new_width, $new_height);
+        if ($new_img == false) {
+            syslog(LOG_WARNING, "Could not scale image ".$file_name);
+        }
         switch (strtolower(substr(strrchr($file_name, '.'), 1))) {
             case 'jpg':
             case 'jpeg':
                 $src_img = @imagecreatefromjpeg($file_path);
+                if ($src_img == false) {
+                    syslog(LOG_WARNING, "Could not create jpeg image resource from ".$file_path);
+                }
                 $write_image = 'imagejpeg';
                 $image_quality = isset($options['jpeg_quality']) ?
                     $options['jpeg_quality'] : 75;
@@ -154,6 +181,9 @@ class UploadHandler
             case 'gif':
                 @imagecolortransparent($new_img, @imagecolorallocate($new_img, 0, 0, 0));
                 $src_img = @imagecreatefromgif($file_path);
+                if ($src_img == false) {
+                    syslog(LOG_WARNING, "Could not create  gif image resource from ".$file_path);
+                }
                 $write_image = 'imagegif';
                 $image_quality = null;
                 break;
@@ -162,6 +192,10 @@ class UploadHandler
                 @imagealphablending($new_img, false);
                 @imagesavealpha($new_img, true);
                 $src_img = @imagecreatefrompng($file_path);
+                if ($src_img == false) {
+                    syslog(LOG_WARNING, "Could not create PNG image resource from ".$file_path);
+                }
+
                 $write_image = 'imagepng';
                 $image_quality = isset($options['png_quality']) ?
                     $options['png_quality'] : 9;
@@ -169,34 +203,43 @@ class UploadHandler
             default:
                 $src_img = null;
         }
-        $success = $src_img && @imagecopyresampled(
-                    $new_img,
-                    $src_img,
-                    0, 0, 0, 0,
-                    $new_width,
-                    $new_height,
-                    $img_width,
-                    $img_height
-                ) && $write_image($new_img, $new_file_path, $image_quality);
+        $imagecopy_re_sampled = @imagecopyresampled(
+            $new_img,
+            $src_img,
+            0, 0, 0, 0,
+            $new_width,
+            $new_height,
+            $img_width,
+            $img_height
+        );
+        if ($imagecopy_re_sampled == false) {
+            syslog(LOG_WARNING, "Could not copy-resample image ".$file_path);
+        }
+        $success = $src_img && $imagecopy_re_sampled && $write_image($new_img, $new_file_path, $image_quality);
         // Free up memory (imagedestroy does not delete files):
         @imagedestroy($src_img);
         @imagedestroy($new_img);
+        syslog(LOG_DEBUG, "create_scaled_image:exit returns : " + $success);
         return $success;
     }
 
     protected function validate($uploaded_file, $file, $error, $index) {
-        syslog(LOG_CRIT, "validate");
+
+        syslog(LOG_DEBUG, "validate:entry ".json_encode(array($uploaded_file, $file, $error, $index)));
 
         if ($error) {
             $file->error = $error;
+            syslog(LOG_DEBUG, "validate:exit returns false file error : ".$error);
             return false;
         }
         if (!$file->name) {
             $file->error = 'missingFileName';
+            syslog(LOG_DEBUG, "validate:exit returns false missing file name : ");
             return false;
         }
         if (!preg_match($this->options['accept_file_types'], $file->name)) {
             $file->error = 'acceptFileTypes';
+            syslog(LOG_DEBUG, "validate:exit returns false acceptFileTypes : ".$file->name);
             return false;
         }
         if ($uploaded_file && is_uploaded_file($uploaded_file)) {
@@ -209,17 +252,20 @@ class UploadHandler
                 $file->size > $this->options['max_file_size'])
         ) {
             $file->error = 'maxFileSize';
+            syslog(LOG_DEBUG, "validate:exit returns false maxFileSize exceeded : ".$file_size);
             return false;
         }
         if ($this->options['min_file_size'] &&
             $file_size < $this->options['min_file_size']) {
             $file->error = 'minFileSize';
+            syslog(LOG_DEBUG, "validate:exit returns false minFileSize receded : ".$file_size);
             return false;
         }
         if (is_int($this->options['max_number_of_files']) && (
                 count($this->get_file_objects()) >= $this->options['max_number_of_files'])
         ) {
             $file->error = 'maxNumberOfFiles';
+            syslog(LOG_DEBUG, "validate:exit returns false minFileSize receded : ".$file_size);
             return false;
         }
         list($img_width, $img_height) = @getimagesize($uploaded_file);
@@ -227,19 +273,22 @@ class UploadHandler
             if ($this->options['max_width'] && $img_width > $this->options['max_width'] ||
                 $this->options['max_height'] && $img_height > $this->options['max_height']) {
                 $file->error = 'maxResolution';
+                syslog(LOG_DEBUG, "validate:exit returns false maxResolution exceeded : ".json_encode(array($img_width, $img_height)));
                 return false;
             }
             if ($this->options['min_width'] && $img_width < $this->options['min_width'] ||
                 $this->options['min_height'] && $img_height < $this->options['min_height']) {
                 $file->error = 'minResolution';
+                syslog(LOG_DEBUG, "validate:exit returns false minResolution receded : ".json_encode(array($img_width, $img_height)));
                 return false;
             }
         }
+        syslog(LOG_DEBUG, "validate:exit returns : true");
         return true;
     }
 
     protected function upcount_name_callback($matches) {
-        syslog(LOG_CRIT, "upcount_name_callback");
+        syslog(LOG_DEBUG, "upcount_name_callback:entry ");
 
         $index = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
         $ext = isset($matches[2]) ? $matches[2] : '';
@@ -247,7 +296,7 @@ class UploadHandler
     }
 
     protected function upcount_name($name) {
-        syslog(LOG_CRIT, "upcount_name");
+        syslog(LOG_DEBUG, "upcount_name:entry ");
 
         return preg_replace_callback(
             '/(?:(?: \(([\d]+)\))?(\.[^.]+))?$/',
@@ -261,7 +310,8 @@ class UploadHandler
         // Remove path information and dots around the filename, to prevent uploading
         // into different directories or replacing hidden system files.
         // Also remove control characters and spaces (\x00..\x20) around the filename:
-        syslog(LOG_CRIT, "trim_file_name");
+        syslog(LOG_DEBUG, "trim_file_name:entry ");
+
         $file_name = trim(basename(stripslashes($name)), ".\x00..\x20");
         // Add missing file extension for known image types:
         if (strpos($file_name, '.') === false &&
@@ -278,12 +328,12 @@ class UploadHandler
 
     protected function handle_form_data($file, $index) {
         // Handle form data, e.g. $_REQUEST['description'][$index]
-        syslog(LOG_CRIT, "handle_form_data");
+        syslog(LOG_DEBUG, "handle_form_data");
 
     }
 
     protected function orient_image($file_path) {
-        syslog(LOG_CRIT, "orient_image");
+        syslog(LOG_DEBUG, "orient_image:entry ".$file_path);
 
         $exif = @exif_read_data($file_path);
         if ($exif === false) {
@@ -308,13 +358,17 @@ class UploadHandler
                 return false;
         }
         $success = imagejpeg($image, $file_path);
+        if ($success == false) {
+            syslog(LOG_CRIT, "Could not create reoriented image.");
+        }
         // Free up memory (imagedestroy does not delete files):
         @imagedestroy($image);
         return $success;
     }
 
     protected function handle_file_upload($uploaded_file, $name, $size, $type, $error, $index) {
-        syslog(LOG_CRIT, "handle_file_upload");
+        syslog(LOG_DEBUG, "handle_file_upload:entry ".json_encode(array($uploaded_file, $name, $size, $type, $error, $index)));
+
         $file = new \stdClass();
         $file->name = $this->trim_file_name($name, $type, $index);
         $file->size = intval($size);
@@ -368,10 +422,13 @@ class UploadHandler
             $file->size = $file_size;
             $this->set_file_delete_url($file);
         }
+        syslog(LOG_DEBUG, "handle_file_upload:exit ".json_encode(array($file)));
+
         return $file;
     }
 
     public function get() {
+        syslog(LOG_DEBUG, "get:entry ");
         $file_name = isset($_REQUEST['file']) ?
             basename(stripslashes($_REQUEST['file'])) : null;
         if ($file_name) {
@@ -384,6 +441,8 @@ class UploadHandler
     }
 
     public function post() {
+
+        syslog(LOG_DEBUG, "post:entry ");
         if (isset($_REQUEST['_method']) && $_REQUEST['_method'] === 'DELETE') {
             return $this->delete();
         }
@@ -429,6 +488,7 @@ class UploadHandler
             stripslashes($_REQUEST['redirect']) : null;
         if ($redirect) {
             header('Location: '.sprintf($redirect, rawurlencode($json)));
+            syslog(LOG_DEBUG, "post:redirected ".sprintf($redirect, rawurlencode($json)));
             return;
         }
         if (isset($_SERVER['HTTP_ACCEPT']) &&
@@ -441,7 +501,7 @@ class UploadHandler
     }
 
     public function delete() {
-        syslog(LOG_CRIT, "delete");
+        syslog(LOG_DEBUG, "delete:entry");
 
         $file_name = isset($_REQUEST['file']) ?
             basename(stripslashes($_REQUEST['file'])) : null;
@@ -454,6 +514,8 @@ class UploadHandler
                     unlink($file);
                 }
             }
+        } else {
+            syslog(LOG_CRIT, "delete:failed to delete ".$file_path);
         }
         header('Content-type: application/json');
         echo json_encode($success);
