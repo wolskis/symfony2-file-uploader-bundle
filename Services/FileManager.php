@@ -100,7 +100,7 @@ class FileManager
         {
             if (isset($options['create_to_folder']) && $options['create_to_folder'])
             {
-                @mkdir($to, 0777, true);
+                @mkdir($to, 0700, true);
             }
             elseif (!file_exists($to))
             {
