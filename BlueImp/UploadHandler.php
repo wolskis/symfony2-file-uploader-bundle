@@ -69,16 +69,20 @@ class UploadHandler
     }
 
     protected function getFullUrl() {
-      	return
-    		(isset($_SERVER['HTTPS']) ? 'https://' : 'http://').
-    		(isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'].'@' : '').
-    		(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : ($_SERVER['SERVER_NAME'].
-    		(isset($_SERVER['HTTPS']) && $_SERVER['SERVER_PORT'] === 443 ||
-    		$_SERVER['SERVER_PORT'] === 80 ? '' : ':'.$_SERVER['SERVER_PORT']))).
-    		substr($_SERVER['SCRIPT_NAME'],0, strrpos($_SERVER['SCRIPT_NAME'], '/'));
+        syslog(LOG_CRIT, "getFullUrl");
+
+        return
+            (isset($_SERVER['HTTPS']) ? 'https://' : 'http://').
+            (isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'].'@' : '').
+            (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : ($_SERVER['SERVER_NAME'].
+                (isset($_SERVER['HTTPS']) && $_SERVER['SERVER_PORT'] === 443 ||
+                $_SERVER['SERVER_PORT'] === 80 ? '' : ':'.$_SERVER['SERVER_PORT']))).
+            substr($_SERVER['SCRIPT_NAME'],0, strrpos($_SERVER['SCRIPT_NAME'], '/'));
     }
 
     protected function set_file_delete_url($file) {
+        syslog(LOG_CRIT, "set_file_delete_url");
+
         $file->delete_url = $this->options['script_url']
             .'?file='.rawurlencode($file->name);
         $file->delete_type = $this->options['delete_type'];
@@ -88,6 +92,8 @@ class UploadHandler
     }
 
     protected function get_file_object($file_name) {
+        syslog(LOG_CRIT, "get_file_object");
+
         $file_path = $this->options['upload_dir'].$file_name;
         if (is_file($file_path) && $file_name[0] !== '.') {
             $file = new \stdClass();
@@ -107,6 +113,8 @@ class UploadHandler
     }
 
     protected function get_file_objects() {
+        syslog(LOG_CRIT, "get_file_objects");
+
         return array_values(array_filter(array_map(
             array($this, 'get_file_object'),
             scandir($this->options['upload_dir'])
@@ -114,6 +122,8 @@ class UploadHandler
     }
 
     protected function create_scaled_image($file_name, $options) {
+        syslog(LOG_CRIT, "create_scaled_image");
+
         $file_path = $this->options['upload_dir'].$file_name;
         $new_file_path = $options['upload_dir'].$file_name;
         list($img_width, $img_height) = @getimagesize($file_path);
@@ -160,14 +170,14 @@ class UploadHandler
                 $src_img = null;
         }
         $success = $src_img && @imagecopyresampled(
-            $new_img,
-            $src_img,
-            0, 0, 0, 0,
-            $new_width,
-            $new_height,
-            $img_width,
-            $img_height
-        ) && $write_image($new_img, $new_file_path, $image_quality);
+                    $new_img,
+                    $src_img,
+                    0, 0, 0, 0,
+                    $new_width,
+                    $new_height,
+                    $img_width,
+                    $img_height
+                ) && $write_image($new_img, $new_file_path, $image_quality);
         // Free up memory (imagedestroy does not delete files):
         @imagedestroy($src_img);
         @imagedestroy($new_img);
@@ -175,6 +185,8 @@ class UploadHandler
     }
 
     protected function validate($uploaded_file, $file, $error, $index) {
+        syslog(LOG_CRIT, "validate");
+
         if ($error) {
             $file->error = $error;
             return false;
@@ -195,7 +207,7 @@ class UploadHandler
         if ($this->options['max_file_size'] && (
                 $file_size > $this->options['max_file_size'] ||
                 $file->size > $this->options['max_file_size'])
-            ) {
+        ) {
             $file->error = 'maxFileSize';
             return false;
         }
@@ -206,19 +218,19 @@ class UploadHandler
         }
         if (is_int($this->options['max_number_of_files']) && (
                 count($this->get_file_objects()) >= $this->options['max_number_of_files'])
-            ) {
+        ) {
             $file->error = 'maxNumberOfFiles';
             return false;
         }
         list($img_width, $img_height) = @getimagesize($uploaded_file);
         if (is_int($img_width)) {
             if ($this->options['max_width'] && $img_width > $this->options['max_width'] ||
-                    $this->options['max_height'] && $img_height > $this->options['max_height']) {
+                $this->options['max_height'] && $img_height > $this->options['max_height']) {
                 $file->error = 'maxResolution';
                 return false;
             }
             if ($this->options['min_width'] && $img_width < $this->options['min_width'] ||
-                    $this->options['min_height'] && $img_height < $this->options['min_height']) {
+                $this->options['min_height'] && $img_height < $this->options['min_height']) {
                 $file->error = 'minResolution';
                 return false;
             }
@@ -227,12 +239,16 @@ class UploadHandler
     }
 
     protected function upcount_name_callback($matches) {
+        syslog(LOG_CRIT, "upcount_name_callback");
+
         $index = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
         $ext = isset($matches[2]) ? $matches[2] : '';
         return ' ('.$index.')'.$ext;
     }
 
     protected function upcount_name($name) {
+        syslog(LOG_CRIT, "upcount_name");
+
         return preg_replace_callback(
             '/(?:(?: \(([\d]+)\))?(\.[^.]+))?$/',
             array($this, 'upcount_name_callback'),
@@ -245,6 +261,7 @@ class UploadHandler
         // Remove path information and dots around the filename, to prevent uploading
         // into different directories or replacing hidden system files.
         // Also remove control characters and spaces (\x00..\x20) around the filename:
+        syslog(LOG_CRIT, "trim_file_name");
         $file_name = trim(basename(stripslashes($name)), ".\x00..\x20");
         // Add missing file extension for known image types:
         if (strpos($file_name, '.') === false &&
@@ -261,38 +278,43 @@ class UploadHandler
 
     protected function handle_form_data($file, $index) {
         // Handle form data, e.g. $_REQUEST['description'][$index]
+        syslog(LOG_CRIT, "handle_form_data");
+
     }
 
     protected function orient_image($file_path) {
-      	$exif = @exif_read_data($file_path);
+        syslog(LOG_CRIT, "orient_image");
+
+        $exif = @exif_read_data($file_path);
         if ($exif === false) {
             return false;
         }
-      	$orientation = intval(@$exif['Orientation']);
-      	if (!in_array($orientation, array(3, 6, 8))) { 
-      	    return false;
-      	}
-      	$image = @imagecreatefromjpeg($file_path);
-      	switch ($orientation) {
-        	  case 3:
-          	    $image = @imagerotate($image, 180, 0);
-          	    break;
-        	  case 6:
-          	    $image = @imagerotate($image, 270, 0);
-          	    break;
-        	  case 8:
-          	    $image = @imagerotate($image, 90, 0);
-          	    break;
-          	default:
-          	    return false;
-      	}
-      	$success = imagejpeg($image, $file_path);
-      	// Free up memory (imagedestroy does not delete files):
-      	@imagedestroy($image);
-      	return $success;
+        $orientation = intval(@$exif['Orientation']);
+        if (!in_array($orientation, array(3, 6, 8))) {
+            return false;
+        }
+        $image = @imagecreatefromjpeg($file_path);
+        switch ($orientation) {
+            case 3:
+                $image = @imagerotate($image, 180, 0);
+                break;
+            case 6:
+                $image = @imagerotate($image, 270, 0);
+                break;
+            case 8:
+                $image = @imagerotate($image, 90, 0);
+                break;
+            default:
+                return false;
+        }
+        $success = imagejpeg($image, $file_path);
+        // Free up memory (imagedestroy does not delete files):
+        @imagedestroy($image);
+        return $success;
     }
 
     protected function handle_file_upload($uploaded_file, $name, $size, $type, $error, $index) {
+        syslog(LOG_CRIT, "handle_file_upload");
         $file = new \stdClass();
         $file->name = $this->trim_file_name($name, $type, $index);
         $file->size = intval($size);
@@ -324,9 +346,9 @@ class UploadHandler
             }
             $file_size = filesize($file_path);
             if ($file_size === $file->size) {
-            	if ($this->options['orient_image']) {
-            		$this->orient_image($file_path);
-            	}
+                if ($this->options['orient_image']) {
+                    $this->orient_image($file_path);
+                }
                 $file->url = $this->options['upload_url'].rawurlencode($file->name);
                 foreach($this->options['image_versions'] as $version => $options) {
                     if ($this->create_scaled_image($file->name, $options)) {
@@ -391,14 +413,14 @@ class UploadHandler
                 isset($upload['tmp_name']) ? $upload['tmp_name'] : null,
                 isset($_SERVER['HTTP_X_FILE_NAME']) ?
                     $_SERVER['HTTP_X_FILE_NAME'] : (isset($upload['name']) ?
-                        $upload['name'] : null),
+                    $upload['name'] : null),
                 isset($_SERVER['HTTP_X_FILE_SIZE']) ?
                     $_SERVER['HTTP_X_FILE_SIZE'] : (isset($upload['size']) ?
-                        $upload['size'] : null),
+                    $upload['size'] : null),
                 isset($_SERVER['HTTP_X_FILE_TYPE']) ?
                     $_SERVER['HTTP_X_FILE_TYPE'] : (isset($upload['type']) ?
-                        $upload['type'] : null),
-                isset($upload['error']) ? $upload['error'] : null
+                    $upload['type'] : null),
+                isset($upload['error']) ? $upload['error'] : null, 0
             );
         }
         header('Vary: Accept');
@@ -419,6 +441,8 @@ class UploadHandler
     }
 
     public function delete() {
+        syslog(LOG_CRIT, "delete");
+
         $file_name = isset($_REQUEST['file']) ?
             basename(stripslashes($_REQUEST['file'])) : null;
         $file_path = $this->options['upload_dir'].$file_name;
