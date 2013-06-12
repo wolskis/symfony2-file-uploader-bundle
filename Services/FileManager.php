@@ -59,7 +59,10 @@ class FileManager
         {
             throw \Exception("folder option looks empty, bailing out");
         }
-        system("rm -rf " . escapeshellarg($folder));
+        syslog(LOG_DEBUG, "removeFiles:Deleting folder ".$folder);
+        if (system("rm -rf " . escapeshellarg($folder)) == false) {
+            syslog(LOG_CRIT, "removeFiles:Failed to delete folder ".$folder);
+        };
     }
 
     /**
@@ -100,20 +103,30 @@ class FileManager
         {
             if (isset($options['create_to_folder']) && $options['create_to_folder'])
             {
-                @mkdir($to, 0700, true);
+                syslog(LOG_DEBUG, "syncFiles:sync create folder ".escapeshellarg($to));
+                if (@mkdir($to, 0700, true) == false) {
+                    syslog(LOG_CRIT, "syncFiles:Could not create folder ".escapeshellarg($to));
+                };
             }
             elseif (!file_exists($to))
             {
                 throw new \Exception("to_folder does not exist");
             }
-            system("rsync -a --delete " . escapeshellarg($from . '/') . " " . escapeshellarg($to), $result);
+            syslog(LOG_DEBUG, "syncFiles:sync folders ". escapeshellarg($from . '/') . " " . escapeshellarg($to));
+            if (system("rsync -a --delete " . escapeshellarg($from . '/') . " " . escapeshellarg($to), $result) == false) {
+                syslog(LOG_CRIT, "syncFiles:Failed to synch folders ".escapeshellarg($from . '/')." ".escapeshellarg($to));
+            };
+
             if ($result !== 0)
             {
                 throw new \Exception("Sync failed");
             }
             if (isset($options['remove_from_folder']) && $options['remove_from_folder'])
             {
-                system("rm -rf " . escapeshellarg($from));
+                syslog(LOG_DEBUG, "syncFiles:sync remove folder ".escapeshellarg($from));
+                if (system("rm -rf " . escapeshellarg($from)) == false) {
+                    syslog(LOG_CRIT, "syncFiles:Failed to delete folder ".escapeshellarg($from));
+                };
             }
         }
         else
