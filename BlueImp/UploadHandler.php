@@ -511,7 +511,10 @@ class UploadHandler
             foreach($this->options['image_versions'] as $version => $options) {
                 $file = $options['upload_dir'].$file_name;
                 if (is_file($file)) {
-                    unlink($file);
+                    syslog(LOG_DEBUG, "delete:Deleting file ".$file);
+                    if (unlink($file) == false) {
+                        syslog(LOG_CRIT, "delete:Failed to delete file ".$file);
+                    };
                 }
             }
         } else {
