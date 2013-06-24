@@ -99,10 +99,10 @@ class FileUploader
 
         foreach ($sizes as &$size)
         {
-            @mkdir($size['upload_dir'], 0700, true);
+            @mkdir($size['upload_dir'], 0740, true);
         }
 
-        @mkdir($uploadDir, 0700, true);
+        @mkdir($uploadDir, 0740, true);
 
         $upload_handler = new \PunkAve\FileUploaderBundle\BlueImp\UploadHandler(
             array(
