@@ -104,7 +104,7 @@ class FileManager
             if (isset($options['create_to_folder']) && $options['create_to_folder'])
             {
                 syslog(LOG_DEBUG, "syncFiles:sync create folder ".escapeshellarg($to));
-                if (@mkdir($to, 0700, true) == false) {
+                if (@mkdir($to, 0740, true) == false) {
                     syslog(LOG_CRIT, "syncFiles:Could not create folder ".escapeshellarg($to));
                 };
             }
